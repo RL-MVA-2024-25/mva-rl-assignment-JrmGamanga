@@ -1,0 +1,110 @@
+name: Autograding Tests
+'on':
+- push
+- repository_dispatch
+permissions:
+  checks: write
+  actions: read
+  contents: read
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Agent performance 1
+      id: agent-performance-1
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent performance 1
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_one_env_3432807
+        timeout: 30
+        max-score: 1
+    - name: Agent performance 2
+      id: agent-performance-2
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent performance 2
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_one_env_1e8
+        timeout: 30
+        max-score: 1
+    - name: Agent performance 3
+      id: agent-performance-3
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent performance 3
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_one_env_1e9
+        timeout: 30
+        max-score: 1
+    - name: Agent performance 4
+      id: agent-performance-4
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent performance 4
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_one_env_1e10
+        timeout: 30
+        max-score: 1
+    - name: Agent performance 5
+      id: agent-performance-5
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent performance 5
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_one_env_2e10
+        timeout: 30
+        max-score: 1
+    - name: Agent performance 6
+      id: agent-performance-6
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent performance 6
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_one_env_5e10
+        timeout: 30
+        max-score: 1
+    - name: Agent DR performance 1
+      id: agent-dr-performance-1
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent DR performance 1
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_dr_env_1e10
+        timeout: 30
+        max-score: 1
+    - name: Agent DR performance 2
+      id: agent-dr-performance-2
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent DR performance 2
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_dr_env_2e10
+        timeout: 30
+        max-score: 1
+    - name: Agent DR performance 3
+      id: agent-dr-performance-3
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Agent DR performance 3
+        setup-command: 'sudo -H pip install -r requirements.txt '
+        command: python src/main.py && python -m pytest src/grading.py::test_expected_result_dr_env_5e10
+        timeout: 30
+        max-score: 1
+    - name: Autograding Reporter
+      uses: classroom-resources/autograding-grading-reporter@v1
+      env:
+        AGENT-PERFORMANCE-1_RESULTS: "${{steps.agent-performance-1.outputs.result}}"
+        AGENT-PERFORMANCE-2_RESULTS: "${{steps.agent-performance-2.outputs.result}}"
+        AGENT-PERFORMANCE-3_RESULTS: "${{steps.agent-performance-3.outputs.result}}"
+        AGENT-PERFORMANCE-4_RESULTS: "${{steps.agent-performance-4.outputs.result}}"
+        AGENT-PERFORMANCE-5_RESULTS: "${{steps.agent-performance-5.outputs.result}}"
+        AGENT-PERFORMANCE-6_RESULTS: "${{steps.agent-performance-6.outputs.result}}"
+        AGENT-DR-PERFORMANCE-1_RESULTS: "${{steps.agent-dr-performance-1.outputs.result}}"
+        AGENT-DR-PERFORMANCE-2_RESULTS: "${{steps.agent-dr-performance-2.outputs.result}}"
+        AGENT-DR-PERFORMANCE-3_RESULTS: "${{steps.agent-dr-performance-3.outputs.result}}"
+      with:
+        runners: agent-performance-1,agent-performance-2,agent-performance-3,agent-performance-4,agent-performance-5,agent-performance-6,agent-dr-performance-1,agent-dr-performance-2,agent-dr-performance-3
