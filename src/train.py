@@ -120,7 +120,7 @@ class DQN2(nn.Module):
 class ProjectAgent:
     
     def __init__(self, train=False, config=None, model=None):
-        if train:
+        if not train:
             self.device = "cpu"
             self.model = None
         else:
