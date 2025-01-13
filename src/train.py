@@ -8,7 +8,7 @@ import numpy as np
 import random
 import os.path
 import matplotlib.pyplot as plt
-from tqdm import tqdm
+#from tqdm import tqdm
 from evaluate import evaluate_HIV, evaluate_HIV_population
 from cpprb import ReplayBuffer, PrioritizedReplayBuffer
 
@@ -231,7 +231,7 @@ class ProjectAgent:
         epsilon = self.epsilon_max
         step = 0
         best_score = 0
-        for _ in tqdm(range(2000*self.batch_size)): 
+        for _ in range(2000*self.batch_size): 
             action = env.action_space.sample()
             next_state, reward, done, trunc, _ = env.step(action)
             #self.memory.append(state, action, reward, next_state, done)
