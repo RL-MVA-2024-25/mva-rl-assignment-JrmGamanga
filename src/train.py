@@ -25,24 +25,7 @@ env = TimeLimit(
 # You have to implement your own agent.
 # Don't modify the methods names and signatures, but you can add methods.
 # ENJOY!
-"""
-class ReplayBuffer:
-        def __init__(self, capacity, device):
-            self.capacity = int(capacity) # capacity of the buffer
-            self.data = []
-            self.index = 0 # index of the next cell to be filled
-            self.device = device
-        def append(self, s, a, r, s_, d):
-            if len(self.data) < self.capacity:
-                self.data.append(None)
-            self.data[self.index] = (s, a, r, s_, d)
-            self.index = (self.index + 1) % self.capacity
-        def sample(self, batch_size):
-            batch = random.sample(self.data, batch_size)
-            return list(map(lambda x:torch.Tensor(np.array(x)).to(self.device), list(zip(*batch))))
-        def __len__(self):
-            return len(self.data)
-"""
+
 
 
 class DQN(nn.Module):
@@ -139,9 +122,11 @@ class ProjectAgent:
         self.epsilon_stop = config['epsilon_decay_period'] if 'epsilon_decay_period' in config.keys() else 1000
         self.epsilon_delay = config['epsilon_delay_decay'] if 'epsilon_delay_decay' in config.keys() else 20
         self.epsilon_step = (self.epsilon_max-self.epsilon_min)/self.epsilon_stop
+
         self.model = model 
         self.target_model = deepcopy(self.model).to(device)
-        self.criterion = config['criterion'] if 'criterion' in config.keys() else torch.nn.MSELoss()
+
+        self.loss = torch.nn.SmoothL1Loss()
         lr = config['learning_rate'] if 'learning_rate' in config.keys() else 0.001
         self.lr = lr
         self.optimizer = config['optimizer'] if 'optimizer' in config.keys() else torch.optim.Adam(self.model.parameters(), lr=lr)
@@ -193,31 +178,23 @@ class ProjectAgent:
 
         if True:# len(self.memory) >= self.batch_size:
             
-            #state, action, reward, next_state, terminated = self.memory.sample(self.batch_size)
             sample = self.memory.sample(self.batch_size)
-            #sample["rew"] + (1-sample["done"]) * discounts *
-            #Qt_state_action_max = self.target_model(next_state).max(1)[0].detach()
+           
             
             next_obs = self.target_model(torch.from_numpy(sample["next_obs"]).to(self.device))
             Qt_state_action_max = torch.argmax(next_obs, dim=2).detach()
             
-            #IDmax = self.target_model(next_state).max(1)[1].detach()
-            #Q_state_action_max = self.model(next_state).gather(1, IDmax.to(torch.long).unsqueeze(1)).squeeze()
-            #update = torch.addcmul(reward, 1-terminated, Q_state_action_max, value=self.gamma)
             
-            #update = torch.addcmul(reward, 1-terminated, Qt_state_action_max, value=self.gamma)
             rew = torch.from_numpy(sample["rew"]).to(self.device)
             done = torch.from_numpy(sample["done"]).to(self.device)
             update = torch.addcmul(rew, 1-done, Qt_state_action_max, value=self.discounts)
             
             obs = torch.from_numpy(sample["obs"]).to(self.device)
             act = torch.from_numpy(sample["act"]).to(torch.long).to(self.device).unsqueeze(1)
-            #Q_state_action = self.model(state).gather(1, action.to(torch.long).unsqueeze(1))
             Q_state_action = self.model(obs).gather(2, act)
             
-            #loss = self.criterion(Q_state_action, update.unsqueeze(1))
          
-            loss = self.criterion(Q_state_action.squeeze(1), update)
+            loss = self.loss(Q_state_action.squeeze(1), update)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step() 
@@ -226,7 +203,7 @@ class ProjectAgent:
     def train(self, env, max_episode):
         episode_return = []
         episode = 0
-        episode_cum_reward = 0
+        reward = 0
         state, _ = env.reset()
         epsilon = self.epsilon_max
         step = 0
@@ -234,7 +211,6 @@ class ProjectAgent:
         for _ in range(2000*self.batch_size): 
             action = env.action_space.sample()
             next_state, reward, done, trunc, _ = env.step(action)
-            #self.memory.append(state, action, reward, next_state, done)
             self.memory.add(obs=np.array(state), 
                             act=np.array(action), 
                             rew=np.array(reward), 
@@ -248,7 +224,7 @@ class ProjectAgent:
         state, _ = env.reset()
         episode_return = []
         episode = 0
-        episode_cum_reward = 0
+        reward = 0
         state, _ = env.reset()
         epsilon = self.epsilon_max
         step = 0
@@ -268,7 +244,7 @@ class ProjectAgent:
                             rew=np.array(reward), 
                             next_obs=np.array(next_state), 
                             done=np.array(done))
-            episode_cum_reward += reward
+            reward += reward
 
             for _ in range(self.nb_gradient_steps): 
                 self.gradient_step()
@@ -283,24 +259,26 @@ class ProjectAgent:
 
 
             step += 1
+
+
+
             if done or trunc:
                 episode += 1
-                print("Episode ", '{:3d}'.format(episode), 
-                      ", epsilon ", '{:6.2f}'.format(epsilon), 
-                      #", batch size ", '{:5d}'.format(len(self.memory)), 
-                      ", episode return ", '{:4.1f}'.format(episode_cum_reward),
-                      ", last loss ", '{:4.1f}'.format(self.loss_log[-1] if self.loss_log  else 0),
+                print("episode ", '{:3d}'.format(episode), 
+                      ",epsilon ", '{:6.2f}'.format(epsilon), 
+                      ",episode return ", '{:4.1f}'.format(reward),
+                      ",last loss ", '{:4.1f}'.format(self.loss_log[-1] if self.loss_log  else 0),
                       sep='')
                 state, _ = env.reset()
-                episode_return.append(episode_cum_reward)
+                episode_return.append(reward)
 
-                if episode_cum_reward > best_score:
-                    best_score = episode_cum_reward
+                if reward > best_score:
+                    best_score = reward
                     self.save("./src/best_DQN_agent")
-                if episode_cum_reward > 1e10 and self.optimizer.param_groups[0]['lr'] == 0.001:
+                if reward > 1e10 and self.optimizer.param_groups[0]['lr'] == 0.001:
                     #self.optimizer.param_groups[0]['lr'] /= 100
                     pass
-                episode_cum_reward = 0
+                reward = 0
                 
 
             else:
@@ -337,7 +315,7 @@ if __name__ == "__main__":
                 'gradient_steps': 2,
                 'update_target_freq': 600,
                 'update_target_tau': 0.005,
-                'criterion': torch.nn.SmoothL1Loss()}
+                }
     
 
     
